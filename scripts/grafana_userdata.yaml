@@ -1,0 +1,47 @@
+#cloud-config
+users:
+  - name: opc
+    shell: /bin/bash
+    groups: [ wheel ]
+    sudo: [ "ALL=(ALL) NOPASSWD:ALL" ]
+    ssh-authorized-keys:
+      - ssh-rsa ***** place your key here *****
+
+write_files:
+  - content: |
+      [grafana]
+      name=grafana
+      baseurl=https://packages.grafana.com/oss/rpm
+      repo_gpgcheck=1
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://packages.grafana.com/gpg.key
+      sslverify=1
+      sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+    path: /etc/yum.repos.d/grafana.repo
+
+  - content: |
+      #!/bin/bash
+      yum install -y grafana
+      systemctl stop firewalld
+      firewall-offline-cmd --add-port=3000/tcp
+      systemctl start firewalld
+      systemctl daemon-reload
+      systemctl start grafana-server
+      systemctl status grafana-server
+      systemctl enable grafana-server
+    path: /bootscript.sh
+    permissions: '0755'
+
+runcmd:
+  - echo "Started to execute bootscript"
+  - /bin/bash /bootscript.sh
+  - rm -rf /bootscript.sh
+  - echo "Job Finished"
+
+ssh_pwauth: True
+chpasswd:
+  list: |
+    opc:atomic
+  expire: False
+final_message: "The system is finally up, after $UPTIME seconds"

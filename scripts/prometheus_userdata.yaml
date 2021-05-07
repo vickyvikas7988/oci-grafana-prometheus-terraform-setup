@@ -1,0 +1,91 @@
+#cloud-config
+users:
+  - name: prometheus
+    shell: /bin/bash
+    groups: [ wheel ]
+    sudo: [ "ALL=(ALL) NOPASSWD:ALL" ]
+    ssh-authorized-keys:
+      - ssh-rsa ***** place your key here *****
+
+  - name: opc
+    shell: /bin/bash
+    groups: [ wheel ]
+    sudo: [ "ALL=(ALL) NOPASSWD:ALL" ]
+    ssh-authorized-keys:
+      - ssh-rsa ***** place your key here *****
+
+write_files:
+  - content: |
+      [Unit]
+      Description=Prometheus Server
+      Documentation=https://prometheus.io/docs/introduction/overview/
+      After=network-online.target
+
+      [Service]
+      User=prometheus
+      Restart=on-failure
+
+      #Change this line if you download the
+      #Prometheus on different path user
+      ExecStart=/home/prometheus/prometheus/prometheus \
+        --config.file=/home/prometheus/prometheus/prometheus.yml \
+        --storage.tsdb.path=/home/prometheus/prometheus/data
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/prometheus.service
+
+  - content: |
+      [Unit]
+      Description=AlertManager Server Service
+      Wants=network-online.target
+      After=network-online.target
+
+      [Service]
+      User=root
+      Restart=on-failure
+
+      ExecStart=/home/prometheus/alertmanager/alertmanager \
+      --config.file=/home/prometheus/alertmanager/alertmanager.yml \
+      --web.external-url=http://0.0.0.0:9093
+
+      [Install]
+      WantedBy=multi-user.target
+    path: /etc/systemd/system/alertmanager.service
+
+  - content: |
+      #!/bin/bash
+      wget https://github.com/prometheus/prometheus/releases/download/v2.26.0/prometheus-2.26.0.linux-amd64.tar.gz -O /home/prometheus/prometheus-2.26.0.linux-amd64.tar.gz
+      tar -xzvf /home/prometheus/prometheus-2.26.0.linux-amd64.tar.gz -C /home/prometheus/
+      mv /home/prometheus/prometheus-2.26.0.linux-amd64 /home/prometheus/prometheus
+      wget https://github.com/prometheus/alertmanager/releases/download/v0.22.0-rc.0/alertmanager-0.22.0-rc.0.linux-amd64.tar.gz -O /home/prometheus/alertmanager-0.22.0-rc.0.linux-amd64.tar.gz
+      tar -xzvf /home/prometheus/alertmanager-0.22.0-rc.0.linux-amd64.tar.gz -C /home/prometheus/
+      mv /home/prometheus/alertmanager-0.22.0-rc.0.linux-amd64 /home/prometheus/alertmanager
+      chown -R prometheus:prometheus /home/prometheus
+      systemctl daemon-reload
+      systemctl stop firewalld
+      firewall-offline-cmd --add-port=9090/tcp
+      firewall-offline-cmd --add-port=9093/tcp
+      systemctl start firewalld
+      systemctl start prometheus
+      systemctl enable prometheus
+      systemctl start alertmanager
+      systemctl enable alertmanager
+
+    path: /bootscript.sh
+    permissions: '0755'
+
+runcmd:
+  - echo "Started to execute bootscript"
+  - /bin/bash /bootscript.sh
+  - rm -rf /bootscript.sh
+  - systemctl daemon-reload
+  - systemctl restart prometheus
+  - echo "Job Finished"
+
+ssh_pwauth: True
+chpasswd:
+  list: |
+    opc:atomic
+  expire: False
+final_message: "The system is finally up, after $UPTIME seconds"
