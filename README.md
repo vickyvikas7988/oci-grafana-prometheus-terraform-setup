@@ -18,5 +18,5 @@ You can access the grafana dashboard <public-ip>:3000
 </ul> 
 
 <h3>Note</h3>
-<b>Replace your values in variables.</b>
-<b> Replace your SSH public key in scripts/grafana_userdata.yaml and scripts/prometheus_userdata.yaml files.
+<b> * Replace your values in variables.</b><br>
+<b> * Replace your SSH public key in scripts/grafana_userdata.yaml and scripts/prometheus_userdata.yaml files.
